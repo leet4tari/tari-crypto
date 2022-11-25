@@ -1,0 +1,52 @@
+---
+name: Publish to NPM
+'on':
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          target: wasm32-unknown-unknown
+
+      - name: Cache cargo files and outputs
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build rust binaries
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: install wasm-pack
+        run: npm install -g wasm-pack
+      - name: make wasm
+        run: make wasm
+      - name: make wasm-node
+        run: make wasm-node
+
+      - name: Install dependencies and build
+        run: |
+          npm install
+          npm run build
+
+      - name: Publish package to NPM
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        with:
+          path: tari_js
+        run: npm publish --dry-run
